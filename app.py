@@ -1,76 +1,52 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import joblib
+import numpy as np
 
-# Page configuration
-st.set_page_config(page_title="Paris Housing Predictor", layout="wide")
+# Load the model and scaler
+model = joblib.load('random_forest_model.joblib')
+scaler = joblib.load('scaler.joblib')
 
-# 1. Load the model and scaler
-@st.cache_resource
-def load_assets():
-    model = joblib.load('random_forest_model.joblib')
-    scaler = joblib.load('scaler.joblib')
-    return model, scaler
+st.set_page_config(page_title="Paris House Price Predictor", layout="wide")
 
-try:
-    rf_model, scaler = load_assets()
-except:
-    st.error("Model files not found! Make sure .joblib files are in the same folder.")
-    st.stop()
+st.title("🏠 Paris House Price Predictor")
+st.write("Enter the details of the property below to estimate its market value.")
 
-st.title('🏡 Paris House Price Predictor')
-st.info("Based on your Random Forest model from Colab.")
-
-# 2. Setup Inputs (matching your training columns)
-col1, col2, col3 = st.columns(3)
+# Create two columns for input fields
+col1, col2 = st.columns(2)
 
 with col1:
-    squareMeters = st.number_input("Square Meters", 10, 100000, 50000)
-    numberOfRooms = st.number_input("Rooms", 1, 100, 50)
-    floors = st.number_input("Floors", 1, 100, 50)
-    made = st.number_input("Year Built", 1990, 2021, 2005)
+    squareMeters = st.number_input("Square Meters", min_value=0, value=75000)
+    numberOfRooms = st.number_input("Number of Rooms", min_value=1, value=5)
+    hasYard = st.selectbox("Has Yard", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+    hasPool = st.selectbox("Has Pool", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+    floors = st.number_input("Number of Floors", min_value=1, value=10)
+    cityCode = st.number_input("City Code", min_value=0, value=50000)
+    cityPartRange = st.number_input("City Part Range (1-10)", min_value=1, max_value=10, value=5)
+    numPrevOwners = st.number_input("Number of Previous Owners", min_value=0, value=1)
 
 with col2:
-    basement = st.number_input("Basement Area", 0, 10000, 5000)
-    attic = st.number_input("Attic Area", 0, 10000, 5000)
-    garage = st.number_input("Garage Size", 100, 1000, 500)
-    numPrevOwners = st.number_input("Prev Owners", 1, 10, 5)
+    made = st.number_input("Year Built", min_value=1800, max_value=2025, value=2010)
+    isNewBuilt = st.selectbox("Is New Built", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+    hasStormProtector = st.selectbox("Has Storm Protector", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+    basement = st.number_input("Basement Square Meters", min_value=0, value=1000)
+    attic = st.number_input("Attic Square Meters", min_value=0, value=1000)
+    garage = st.number_input("Garage Square Meters", min_value=0, value=500)
+    hasStorageRoom = st.selectbox("Has Storage Room", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+    hasGuestRoom = st.number_input("Number of Guest Rooms", min_value=0, value=1)
 
-with col3:
-    cityCode = st.number_input("City Code", 0, 100000, 50000)
-    cityPartRange = st.number_input("City Prestige (1-10)", 1, 10, 5)
-    hasGuestRoom = st.number_input("Guest Rooms", 0, 10, 5)
-
-# Checkboxes for your one-hot encoded features
-st.subheader("Extra Amenities")
-c1, c2, c3, c4, c5 = st.columns(5)
-hasYard = c1.checkbox("Yard")
-hasPool = c2.checkbox("Pool")
-isNewBuilt = c3.checkbox("New Built")
-hasStormProtector = c4.checkbox("Storm Protector")
-hasStorageRoom = c5.checkbox("Storage Room")
-
-# 3. Prediction
-if st.button('Predict Price', type="primary"):
-    # Create input array in exact training order
-    # Note: Categorical columns have '_1' suffix in your trained X columns
-    data = {
-        'squareMeters': squareMeters, 'numberOfRooms': numberOfRooms, 'floors': floors, 
-        'cityCode': cityCode, 'cityPartRange': cityPartRange, 'numPrevOwners': numPrevOwners, 
-        'made': made, 'basement': basement, 'attic': attic, 'garage': garage, 
-        'hasGuestRoom': hasGuestRoom, 'hasYard_1': int(hasYard), 'hasPool_1': int(hasPool), 
-        'isNewBuilt_1': int(isNewBuilt), 'hasStormProtector_1': int(hasStormProtector), 
-        'hasStorageRoom_1': int(hasStorageRoom)
-    }
+# Prediction Logic
+if st.button("Predict Price", use_container_width=True):
+    # Prepare input data in the correct order
+    features = np.array([[squareMeters, numberOfRooms, hasYard, hasPool, floors, cityCode, cityPartRange, 
+                           numPrevOwners, made, isNewBuilt, hasStormProtector, basement, attic, 
+                           garage, hasStorageRoom, hasGuestRoom]])
     
-    input_df = pd.DataFrame([data])
+    # Scale the input features using the saved scaler
+    features_scaled = scaler.transform(features)
     
-    # Scale numerical parts (just like your training)
-    num_cols = ['squareMeters', 'numberOfRooms', 'floors', 'cityCode', 'cityPartRange', 
-                'numPrevOwners', 'made', 'basement', 'attic', 'garage', 'hasGuestRoom']
-    input_df[num_cols] = scaler.transform(input_df[num_cols])
+    # Make prediction
+    prediction = model.predict(features_scaled)
     
-    # Predict
-    price = rf_model.predict(input_df)[0]
-    st.success(f"### Estimated Price: €{price:,.2f}")
+    st.divider()
+    st.subheader(f"Estimated House Price: ${prediction[0]:,.2f}")
