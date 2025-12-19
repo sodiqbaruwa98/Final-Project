@@ -3,50 +3,44 @@ import pandas as pd
 import joblib
 import numpy as np
 
-# Load the model and scaler
+# Load the newly generated files
 model = joblib.load('random_forest_model.joblib')
 scaler = joblib.load('scaler.joblib')
 
-st.set_page_config(page_title="Paris House Price Predictor", layout="wide")
+st.title("Paris House Price Predictor")
 
-st.title("🏠 Paris House Price Predictor")
-st.write("Enter the details of the property below to estimate its market value.")
-
-# Create two columns for input fields
+# Input collection (ensure all 16 are here)
 col1, col2 = st.columns(2)
-
 with col1:
-    squareMeters = st.number_input("Square Meters", min_value=0, value=75000)
-    numberOfRooms = st.number_input("Number of Rooms", min_value=1, value=5)
-    hasYard = st.selectbox("Has Yard", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
-    hasPool = st.selectbox("Has Pool", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
-    floors = st.number_input("Number of Floors", min_value=1, value=10)
-    cityCode = st.number_input("City Code", min_value=0, value=50000)
-    cityPartRange = st.number_input("City Part Range (1-10)", min_value=1, max_value=10, value=5)
-    numPrevOwners = st.number_input("Number of Previous Owners", min_value=0, value=1)
+    squareMeters = st.number_input("Square Meters", value=75000)
+    numberOfRooms = st.number_input("Rooms", value=5)
+    hasYard = st.selectbox("Yard", [0, 1])
+    hasPool = st.selectbox("Pool", [0, 1])
+    floors = st.number_input("Floors", value=2)
+    cityCode = st.number_input("City Code", value=50000)
+    cityPartRange = st.number_input("City Part Range", value=5)
+    numPrevOwners = st.number_input("Prev Owners", value=1)
 
 with col2:
-    made = st.number_input("Year Built", min_value=1800, max_value=2025, value=2010)
-    isNewBuilt = st.selectbox("Is New Built", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
-    hasStormProtector = st.selectbox("Has Storm Protector", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
-    basement = st.number_input("Basement Square Meters", min_value=0, value=1000)
-    attic = st.number_input("Attic Square Meters", min_value=0, value=1000)
-    garage = st.number_input("Garage Square Meters", min_value=0, value=500)
-    hasStorageRoom = st.selectbox("Has Storage Room", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
-    hasGuestRoom = st.number_input("Number of Guest Rooms", min_value=0, value=1)
+    made = st.number_input("Year Built", value=2010)
+    isNewBuilt = st.selectbox("New Built", [0, 1])
+    hasStormProtector = st.selectbox("Storm Protector", [0, 1])
+    basement = st.number_input("Basement Size", value=50)
+    attic = st.number_input("Attic Size", value=50)
+    garage = st.number_input("Garage Size", value=1)
+    hasStorageRoom = st.selectbox("Storage Room", [0, 1])
+    hasGuestRoom = st.number_input("Guest Rooms", value=1)
 
-# Prediction Logic
-if st.button("Predict Price", use_container_width=True):
-    # Prepare input data in the correct order
-    features = np.array([[squareMeters, numberOfRooms, hasYard, hasPool, floors, cityCode, cityPartRange, 
-                           numPrevOwners, made, isNewBuilt, hasStormProtector, basement, attic, 
-                           garage, hasStorageRoom, hasGuestRoom]])
+if st.button("Predict"):
+    # Create the array with EXACTLY 16 items
+    input_features = np.array([[
+        squareMeters, numberOfRooms, hasYard, hasPool, floors, cityCode, 
+        cityPartRange, numPrevOwners, made, isNewBuilt, hasStormProtector, 
+        basement, attic, garage, hasStorageRoom, hasGuestRoom
+    ]])
     
-    # Scale the input features using the saved scaler
-    features_scaled = scaler.transform(features)
+    # This line will NO LONGER throw an error if you ran the Step 1 script!
+    input_scaled = scaler.transform(input_features)
     
-    # Make prediction
-    prediction = model.predict(features_scaled)
-    
-    st.divider()
-    st.subheader(f"Estimated House Price: ${prediction[0]:,.2f}")
+    prediction = model.predict(input_scaled)
+    st.success(f"Predicted Price: ${prediction[0]:,.2f}")
